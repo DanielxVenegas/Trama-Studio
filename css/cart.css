@@ -1,0 +1,48 @@
+/* Botón de carrito en el header */
+.cart-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:2.6rem;height:2.6rem;border-radius:999px;border:2px solid transparent;color:var(--ink);background:transparent;cursor:pointer}
+.cart-btn:hover{background:#DCE3F2}
+.cart-count{position:absolute;top:-2px;right:-2px;min-width:1.2rem;height:1.2rem;padding:0 .25rem;border-radius:999px;background:var(--cobalt);color:#fff;font:800 .68rem var(--body);display:flex;align-items:center;justify-content:center;border:2px solid var(--paper)}
+
+/* Notificaciones toast */
+.toast-root{position:fixed;bottom:1.2rem;right:1.2rem;z-index:500;display:flex;flex-direction:column;gap:.6rem;max-width:min(92vw,360px)}
+.toast{background:var(--ink);color:#fff;border-left:4px solid var(--sun);padding:.8rem 1.1rem;border-radius:10px;font:600 .9rem var(--body);box-shadow:0 10px 24px rgba(16,27,51,.25);animation:toastIn .2s ease-out}
+.toast.out{opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* Fondo y panel del carrito */
+.cart-backdrop{position:fixed;inset:0;background:rgba(16,27,51,.55);z-index:400;opacity:0;transition:opacity .2s}
+.cart-backdrop.open{opacity:1}
+.cart-drawer{position:fixed;top:0;right:0;bottom:0;width:min(94vw,420px);background:var(--chalk);z-index:410;display:flex;flex-direction:column;border-radius:0;border-width:0 0 0 2px;transform:translateX(100%);transition:transform .25s ease-out}
+.cart-drawer.open{transform:translateX(0)}
+.cart-head{display:flex;align-items:center;gap:.6rem;padding:1.1rem 1.2rem;border-bottom:2px dashed var(--ink)}
+.cart-head h2{font-size:1.25rem;flex:1}
+.cart-items-count{color:var(--muted);font:600 .85rem var(--body)}
+.cart-close{width:2.2rem;height:2.2rem;border-radius:50%;border:2px solid var(--ink);background:transparent;font-size:1.2rem;line-height:1;cursor:pointer}
+.cart-ship{padding:.8rem 1.2rem;border-bottom:1px dashed #C9D1E3}
+.cart-ship-row{display:flex;justify-content:space-between;font:700 .78rem var(--body);margin-bottom:.4rem}
+.cart-ship-track{height:6px;border-radius:999px;background:#DCE3F2;overflow:hidden}
+.cart-ship-fill{height:100%;background:var(--cobalt);width:0;transition:width .3s}
+.cart-body{flex:1;overflow-y:auto;padding:1rem 1.2rem}
+.cart-empty{display:flex;flex-direction:column;align-items:center;gap:.8rem;text-align:center;padding:2.5rem 1rem;color:var(--muted)}
+
+.cart-item{display:flex;gap:.9rem;padding-block:.9rem;border-bottom:1px dashed #C9D1E3}
+.cart-item-thumb{width:4.4rem;height:3.7rem;flex-shrink:0;background:#E3E8F2;border-radius:8px;padding:.3rem}
+.cart-item-info{flex:1;min-width:0}
+.cart-item-info strong{display:block;font-size:.95rem}
+.cart-item-info .meta{font-size:.8rem;margin:.1rem 0 .5rem}
+.cart-item-row{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap}
+.qty{display:inline-flex;align-items:center;gap:.5rem;border:2px solid var(--ink);border-radius:999px;padding:.1rem .3rem}
+.qty button{width:1.5rem;height:1.5rem;border-radius:50%;border:0;background:transparent;font:800 1rem var(--body);cursor:pointer;line-height:1}
+.qty span{min-width:1.2rem;text-align:center;font-weight:700}
+.cart-item-price{font:800 .95rem var(--display);margin-left:auto}
+.cart-item-remove{font:600 .78rem var(--body);text-decoration:underline;color:#B3122A;background:none;border:0;cursor:pointer;padding:0}
+
+.cart-foot{border-top:2px dashed var(--ink);padding:1rem 1.2rem;display:flex;flex-direction:column;gap:.8rem}
+.cart-promo{display:flex;gap:.5rem}
+.cart-promo input{flex:1;font:inherit;padding:.5rem .7rem;border-radius:10px;border:2px solid var(--ink)}
+.cart-totals{display:flex;flex-direction:column;gap:.3rem;font-size:.92rem}
+.cart-totals-row{display:flex;justify-content:space-between}
+.cart-totals-row.cobalt{color:var(--cobalt)}
+.cart-totals-row.total{font:800 1.1rem var(--display);border-top:1px dashed #C9D1E3;padding-top:.4rem;margin-top:.2rem}
+#cart-checkout[aria-disabled=true]{opacity:.5;pointer-events:none}
+@media (max-width:480px){.cart-drawer{width:100vw}}
