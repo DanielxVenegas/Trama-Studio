@@ -2,12 +2,7 @@
 (() => {
   const q = new URLSearchParams(location.search), saved = readDesign();
   const st = { cut: CUTS[q.get('cut')] ? q.get('cut') : (CUTS[saved.cut] ? saved.cut : 'regular'),
-    color: saved.color || '#FFFFFF', img: saved.img || null, fileName: saved.fileName || '',
-    presetKey: saved.img ? null : (saved.presetKey || 'ninguno'), text: saved.text || '',
-    fontId: FONTS.some(f => f.id === saved.fontId) ? saved.fontId : FONTS[0].id,
-    textColor: saved.textColor || TEXT_COLORS[0].hex,
-    size: SIZES.includes(saved.size) ? saved.size : 'M', qty: saved.qty || 1, notes: saved.notes || '',
-    side: 'front', scale: 1, dy: 0 };
+    color: saved.color || '#FFFFFF', img: saved.img || null, side: 'front', scale: 1, dy: 0 };
   const $ = id => document.getElementById(id), stage = $('stage');
   const sm = t => t * t * (3 - 2 * t), cl = (v, a, b) => Math.max(a, Math.min(b, v));
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -97,14 +92,6 @@
     new THREE.TextureLoader().load(src, t => { t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; tex = t; decal(); });
   }
 
-  /* Combina el arte (archivo o estampado) y el texto en una sola imagen para la calcomanía 3D */
-  async function refreshDecal() {
-    try {
-      const combined = await composePrint({ img: st.img, preset: st.presetKey, text: st.text, font: FONTS.find(f => f.id === st.fontId), textColor: st.textColor });
-      setImage(combined);
-    } catch (e) { $('msg').textContent = typeof e === 'string' ? e : 'No se pudo generar el diseño.'; }
-  }
-
   /* Panel */
   const mark = (id, attr, val) => $(id).querySelectorAll('[' + attr + ']').forEach(b => b.setAttribute('aria-pressed', b.getAttribute(attr) === String(val)));
   function ui() {
@@ -118,11 +105,7 @@
   $('dy').addEventListener('input', e => { st.dy = +e.target.value; decal(); });
   $('bgs').addEventListener('click', e => { const b = e.target.closest('[data-bg]'); if (b) { stage.dataset.bg = b.dataset.bg; mark('bgs', 'data-bg', b.dataset.bg); } });
   $('file').addEventListener('change', async e => {
-    try {
-      $('msg').textContent = ''; const file = e.target.files[0];
-      st.img = await loadDesign(file); st.fileName = file.name; st.presetKey = null;
-      await refreshDecal(); ui();
-    } catch (err) { $('msg').textContent = err; }
+    try { $('msg').textContent = ''; st.img = await loadDesign(e.target.files[0]); setImage(st.img); ui(); } catch (err) { $('msg').textContent = err; }
   });
   $('shot').addEventListener('click', () => {
     renderer.render(scene, cam); const a = document.createElement('a'); a.download = 'mi-playera-3d.png'; a.href = renderer.domElement.toDataURL('image/png'); a.click();
@@ -154,6 +137,5 @@
     renderer.render(scene, cam); requestAnimationFrame(loop);
   })();
 
-  build(); ui();
-  if (st.img || (st.presetKey && st.presetKey !== 'ninguno') || st.text) refreshDecal();
+  build(); ui(); if (st.img) setImage(st.img);
 })();

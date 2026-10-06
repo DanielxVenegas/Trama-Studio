@@ -9,12 +9,10 @@
   document.getElementById('real-x').addEventListener('click', () => dlg.close());
   btn.addEventListener('click', async () => {
     const d = readDesign(); msg.textContent = '';
-    let print;
-    try { print = await composePrint({ img: d.img, preset: d.presetKey, text: d.text, font: FONTS.find(f => f.id === d.fontId), textColor: d.textColor }); } catch (e) {}
-    if (!print) { msg.textContent = 'Sube tu diseño o elige un estampado para generar la foto.'; return; }
+    if (!d.img) { msg.textContent = 'Sube tu diseño para generar la foto.'; return; }
     btn.disabled = true; btn.textContent = 'Generando foto...';
     try {
-      const r = await fetch('/api/mockup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ img: print, color: d.color }) });
+      const r = await fetch('/api/mockup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ img: d.img, color: d.color }) });
       const j = await r.json(); if (!r.ok) throw new Error(j.error || 'No se pudo generar la foto.');
       img.src = j.url; document.getElementById('real-dl').href = j.url; dlg.showModal();
     } catch (e) { msg.textContent = e.message; }

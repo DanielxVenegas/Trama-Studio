@@ -23,7 +23,6 @@
 .seg button[aria-pressed=true]{background:var(--ink);color:#fff}
 .rng{display:flex;flex-direction:column;gap:.2rem;font-weight:600;font-size:.92rem}
 .rng input{accent-color:var(--cobalt)}
-.order-link{text-align:center}
 dialog{padding:1rem;max-width:min(92vw,720px);margin:auto}
 dialog::backdrop{background:rgba(16,27,51,.6)}
 dialog img{width:100%;height:auto;border-radius:10px}
