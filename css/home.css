@@ -17,8 +17,12 @@
 .meta{color:var(--muted);font-size:.92rem;line-height:1.35}
 .row{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:.7rem}
 .price{font:800 1.3rem var(--display)}
+.card-buy{display:flex;gap:.5rem;margin-top:.7rem}
+.card-buy .size-select{flex:1;font:inherit;padding:.5rem .6rem;border-radius:10px;border:2px solid var(--ink);background:#fff}
+.card-buy .btn-add{padding:.55rem 1rem;font-size:.95rem}
 .card .btn{margin-top:.7rem;text-align:center;padding:.55rem 1rem;font-size:.95rem}
 .cuts .card-art{background:#fff}
+.steps-title{margin-bottom:1.6rem}
 .steps ol{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1.4rem;counter-reset:s;padding:0}
 .steps li{counter-increment:s;padding:1.4rem;list-style:none}
 .steps li::before{content:counter(s);display:grid;place-items:center;width:2.4rem;height:2.4rem;border-radius:50%;background:var(--cobalt);color:#fff;font:800 1.1rem var(--display);margin-bottom:.8rem}

@@ -1,16 +1,86 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/base.css"><title>Personaliza tu playera | Trama Studio</title><link rel="stylesheet" href="css/personalizar.css"></head>
-<body data-page="custom"><div id="site-header"></div><main class="wrap layout">
-<div class="preview stitch"><div id="preview"></div><p id="preview-note">Elige corte y color. Tu diseño aparecerá aquí.</p></div>
-<form id="form" novalidate><h1 style="font-size:clamp(2rem,5vw,3rem)">Personaliza tu playera</h1>
-<fieldset><legend>1. Sube tu diseño</legend><label class="drop"><input type="file" id="file" accept="image/*"><strong>Elige una imagen</strong><small>PNG, JPG o SVG, máximo 8 MB</small></label></fieldset>
-<fieldset><legend>2. Elige el corte</legend><div class="cut-list" id="cuts"></div></fieldset>
-<fieldset><legend>3. Elige el color</legend><div class="swatches" id="swatches"></div></fieldset>
-<fieldset><legend>4. Tus datos</legend><div class="fields">
-<div><label for="nombre">Nombre</label><input type="text" id="nombre" name="nombre" required autocomplete="name"></div>
-<div><label for="talla">Talla</label><select id="talla" name="talla"><option>S</option><option selected>M</option><option>L</option><option>XL</option></select></div>
-<div><label for="cant">Cantidad</label><input type="number" id="cant" name="cant" min="1" value="1" required></div></div>
-<label for="notas">Notas (opcional)</label><textarea id="notas" name="notas" rows="3" placeholder="Posición del diseño, tamaño, estampado en espalda..."></textarea></fieldset>
-<div class="status" id="status" role="status"></div>
-<div class="actions"><button type="button" class="btn btn-ghost" id="to3d">Ver en 3D</button><button type="submit" class="btn btn-primary">Enviar pedido por WhatsApp</button></div>
-</form></main><div id="site-footer"></div>
-<script src="js/data.js"></script><script src="js/components.js"></script><script src="js/personalizar.js"></script></body></html>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/cart.css"><title>Personaliza tu playera | Trama Studio</title>
+<meta name="description" content="Elige corte, color, arte y texto. Mira el precio al momento y agrega tu playera al carrito."><link rel="stylesheet" href="css/personalizar.css"></head>
+<body data-page="custom"><div id="site-header"></div>
+<main class="wrap studio">
+<h1 class="studio-title">Personaliza tu playera</h1>
+
+<div class="studio-grid">
+  <div class="studio-preview stitch">
+    <div class="preview-toolbar seg" id="sides" role="group" aria-label="Lado de la prenda">
+      <button type="button" data-side="front" aria-pressed="true">Frente</button>
+      <button type="button" data-side="back" aria-pressed="false">Espalda</button>
+    </div>
+    <div id="preview"></div>
+    <p id="preview-note" class="preview-note">Elige corte y color. Tu diseño aparecerá aquí.</p>
+  </div>
+
+  <form id="form" class="studio-form" novalidate>
+    <fieldset class="step">
+      <legend><span class="step-num">1</span> Elige el corte</legend>
+      <div class="cut-list" id="cuts"></div>
+    </fieldset>
+
+    <fieldset class="step">
+      <legend><span class="step-num">2</span> Elige el color</legend>
+      <div class="swatches" id="swatches"></div>
+      <p class="selected-note" id="color-note"></p>
+    </fieldset>
+
+    <fieldset class="step">
+      <legend><span class="step-num">3</span> Arte: sube tu diseño o elige un estampado</legend>
+      <label class="drop">
+        <input type="file" id="file" accept="image/*">
+        <strong>Elige una imagen</strong><small>PNG, JPG o SVG, máximo 8 MB</small>
+      </label>
+      <div class="file-loaded" id="file-loaded" hidden>
+        <span id="file-name"></span>
+        <button type="button" class="btn-link" id="file-remove">Quitar</button>
+      </div>
+      <p class="step-sub">O elige un estampado de muestra:</p>
+      <div class="preset-grid" id="presets"></div>
+    </fieldset>
+
+    <fieldset class="step">
+      <legend><span class="step-num">4</span> Añade texto (opcional)</legend>
+      <label for="text-input" class="visually-hidden">Frase o nombre a estampar</label>
+      <input type="text" id="text-input" maxlength="24" placeholder="Ej. HECHO A MANO">
+      <p class="step-sub">Tipografía</p>
+      <div class="font-list" id="fonts"></div>
+      <p class="step-sub">Color del texto</p>
+      <div class="swatches swatches-sm" id="text-colors"></div>
+    </fieldset>
+
+    <fieldset class="step">
+      <legend><span class="step-num">5</span> Talla y cantidad</legend>
+      <div class="size-row">
+        <div class="size-pills" id="sizes"></div>
+        <div class="qty">
+          <button type="button" id="qty-minus" aria-label="Disminuir cantidad">-</button>
+          <span id="qty-val">1</span>
+          <button type="button" id="qty-plus" aria-label="Aumentar cantidad">+</button>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="form-field">
+      <label for="notas">Notas (opcional)</label>
+      <textarea id="notas" name="notas" rows="2" placeholder="Posición del diseño, tamaño, estampado en espalda..."></textarea>
+    </div>
+
+    <div class="status" id="status" role="status"></div>
+
+    <div class="studio-summary">
+      <span>Total</span>
+      <strong id="price-total">$0</strong>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn btn-ghost" id="to3d">Ver en 3D</button>
+      <button type="button" class="btn btn-ghost" id="reset">Reiniciar</button>
+      <button type="submit" class="btn btn-primary">Agregar al carrito</button>
+    </div>
+  </form>
+</div>
+</main>
+<div id="site-footer"></div>
+<script src="js/data.js"></script><script src="js/components.js"></script><script src="js/cart.js"></script><script src="js/personalizar.js"></script></body></html>

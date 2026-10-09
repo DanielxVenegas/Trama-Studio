@@ -1,64 +1,130 @@
-/* Servidor de Trama Studio: sirve el sitio y protege la llave de la API (Dynamic Mockups).
-   Sin dependencias. Requiere Node 18 o superior. Uso: npm start */
-const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto');
-const ROOT = path.join(__dirname, '..'), TMP = path.join(__dirname, 'tmp');
+/* Servidor de Trama Studio: sirve el sitio y expone la API de pedidos y del administrador.
+   Sin dependencias externas. Requiere Node 22.13 o superior (usa node:sqlite). Uso: npm start */
+const http = require('http'), fs = require('fs'), path = require('path');
+const ROOT = path.join(__dirname, '..');
 try { /* lee .env sin librerías */
   fs.readFileSync(path.join(ROOT, '.env'), 'utf8').split(/\r?\n/).forEach(l => {
     const m = l.match(/^\s*([A-Z_]+)\s*=\s*(.*?)\s*$/);
     if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
   });
 } catch (e) {}
-const { DM_API_KEY, DM_MOCKUP_UUID, DM_SMART_OBJECT_UUID, DM_COLOR_OBJECT_UUID, PUBLIC_URL } = process.env;
-const PORT = process.env.PORT || 3000, API = 'https://app.dynamicmockups.com/api/v1';
-const enabled = () => !!(DM_API_KEY && DM_MOCKUP_UUID && DM_SMART_OBJECT_UUID && PUBLIC_URL);
-fs.mkdirSync(TMP, { recursive: true });
+
+const PORT = process.env.PORT || 3000;
+
+const { createOrder, OrderError } = require('./orders');
+const admin = require('./admin');
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.json': 'application/json' };
-const json = (res, code, o) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
-const hits = new Map(); /* tope: 10 renders por hora por IP, para cuidar tus créditos */
-const limited = ip => { const n = Date.now(), a = (hits.get(ip) || []).filter(t => n - t < 36e5); if (a.length >= 10) return true; a.push(n); hits.set(ip, a); return false; };
+const json = (res, code, o, headers) => { res.writeHead(code, Object.assign({ 'Content-Type': 'application/json' }, headers)); res.end(JSON.stringify(o)); };
+
+function limiter(max, windowMs) {
+  const hits = new Map();
+  return ip => {
+    const now = Date.now(), arr = (hits.get(ip) || []).filter(t => now - t < windowMs);
+    if (arr.length >= max) return true;
+    arr.push(now); hits.set(ip, arr);
+    return false;
+  };
+}
+const orderLimited = limiter(10, 36e5);
+
 const readBody = (req, max) => new Promise((ok, fail) => {
   let n = 0; const c = [];
-  req.on('data', d => { n += d.length; if (n > max) { fail(new Error('Archivo demasiado grande')); req.destroy(); } else c.push(d); });
+  req.on('data', d => { n += d.length; if (n > max) { fail(new Error('Cuerpo demasiado grande')); req.destroy(); } else c.push(d); });
   req.on('end', () => ok(Buffer.concat(c))); req.on('error', fail);
 });
+const readJSON = async (req, max) => JSON.parse((await readBody(req, max)).toString() || '{}');
+const isJSON = req => /^application\/json/i.test(req.headers['content-type'] || '');
+
 const sendFile = (res, f) => fs.readFile(f, (err, buf) => {
   if (err) { res.writeHead(404); return res.end('No encontrado'); }
   res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache' }); res.end(buf);
 });
 
+const ORDER_BODY_MAX = 6e6;
+const ADMIN_BODY_MAX = 2e6;
+const ORDER_DETAIL_RE = /^\/api\/admin\/orders\/([^/]+)$/;
+const STOCK_ITEM_RE = /^\/api\/admin\/stock\/([^/]+)$/;
+
+const sendKnownError = (res, e, ErrClass) => {
+  if (e instanceof ErrClass) { json(res, e.status, { error: e.message }); return true; }
+  return false;
+};
+
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
+  const ip = req.socket.remoteAddress;
   try {
-    if (url.pathname === '/api/config') return json(res, 200, { mockup: enabled() });
+    if (url.pathname === '/api/config') return json(res, 200, { orders: true });
 
-    /* Ayuda para encontrar tus UUID: abre /api/mockups en el navegador */
-    if (url.pathname === '/api/mockups' && DM_API_KEY) {
-      const r = await fetch(API + '/mockups', { headers: { 'x-api-key': DM_API_KEY, Accept: 'application/json' } });
-      res.writeHead(r.status, { 'Content-Type': 'application/json' }); return res.end(await r.text());
+    if (url.pathname === '/api/stock' && req.method === 'GET') {
+      const map = {}; admin.listStock().forEach(p => { map[p.id] = p.qty; });
+      return json(res, 200, map);
     }
 
-    if (url.pathname === '/api/mockup' && req.method === 'POST') {
-      if (!enabled()) return json(res, 503, { error: 'La API de fotos realistas no está configurada.' });
-      if (limited(req.socket.remoteAddress)) return json(res, 429, { error: 'Demasiados intentos. Prueba más tarde.' });
-      const { img, color } = JSON.parse((await readBody(req, 12e6)).toString());
-      const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(img || '');
-      if (!m) return json(res, 400, { error: 'Imagen inválida.' });
-      const id = crypto.randomUUID() + '.png', file = path.join(TMP, id);
-      fs.writeFileSync(file, Buffer.from(m[1], 'base64')); setTimeout(() => fs.unlink(file, () => {}), 10 * 60e3);
-      const so = [{ uuid: DM_SMART_OBJECT_UUID, asset: { url: PUBLIC_URL.replace(/\/$/, '') + '/tmp/' + id, fit: 'contain' } }];
-      if (DM_COLOR_OBJECT_UUID && /^#[0-9a-f]{6}$/i.test(color || '')) so.push({ uuid: DM_COLOR_OBJECT_UUID, color });
-      const r = await fetch(API + '/renders', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'x-api-key': DM_API_KEY },
-        body: JSON.stringify({ mockup_uuid: DM_MOCKUP_UUID, smart_objects: so, export_options: { image_format: 'webp', image_size: 1400, mode: 'view' } })
-      });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.data || !d.data.export_path) return json(res, 502, { error: d.message || 'No se pudo generar la imagen.' });
-      return json(res, 200, { url: d.data.export_path });
+    if (url.pathname === '/api/orders' && req.method === 'POST') {
+      if (orderLimited(ip)) return json(res, 429, { error: 'Demasiados pedidos desde aquí. Prueba más tarde.' });
+      if (!isJSON(req)) return json(res, 400, { error: 'Formato de petición inválido.' });
+      let body;
+      try { body = await readJSON(req, ORDER_BODY_MAX); } catch (e) { return json(res, 400, { error: 'No se pudo leer el pedido.' }); }
+      try { return json(res, 201, createOrder(body)); }
+      catch (e) { if (!sendKnownError(res, e, OrderError)) throw e; }
+      return;
     }
 
-    if (url.pathname.startsWith('/tmp/')) { /* imagen temporal que la API descarga */
-      const n = path.basename(url.pathname); return /^[\w-]+\.png$/.test(n) ? sendFile(res, path.join(TMP, n)) : (res.writeHead(404), res.end());
+    if (url.pathname === '/api/admin/login' && req.method === 'POST') {
+      if (!isJSON(req)) return json(res, 400, { error: 'Formato de petición inválido.' });
+      let body;
+      try { body = await readJSON(req, ADMIN_BODY_MAX); } catch (e) { return json(res, 400, { error: 'No se pudo leer la petición.' }); }
+      try { return json(res, 200, { ok: true }, { 'Set-Cookie': admin.login(body.password, ip) }); }
+      catch (e) { if (!sendKnownError(res, e, admin.AdminError)) throw e; }
+      return;
+    }
+
+    if (url.pathname === '/api/admin/logout' && req.method === 'POST') {
+      return json(res, 200, { ok: true }, { 'Set-Cookie': admin.clearSessionCookie() });
+    }
+
+    if (url.pathname.startsWith('/api/admin/')) {
+      if (!admin.configured()) return json(res, 503, { error: 'El panel del administrador no está configurado.' });
+      if (!admin.isAuthed(req)) return json(res, 401, { error: 'No autorizado.' });
+
+      if (url.pathname === '/api/admin/orders' && req.method === 'GET') {
+        return json(res, 200, admin.listOrders({
+          status: url.searchParams.get('status') || '',
+          q: url.searchParams.get('q') || '',
+          page: url.searchParams.get('page') || '1'
+        }));
+      }
+
+      const orderMatch = ORDER_DETAIL_RE.exec(url.pathname);
+      if (orderMatch && req.method === 'GET') {
+        try { return json(res, 200, admin.getOrder(decodeURIComponent(orderMatch[1]))); }
+        catch (e) { if (!sendKnownError(res, e, admin.AdminError)) throw e; }
+        return;
+      }
+      if (orderMatch && req.method === 'PATCH') {
+        if (!isJSON(req)) return json(res, 400, { error: 'Formato de petición inválido.' });
+        let body;
+        try { body = await readJSON(req, ADMIN_BODY_MAX); } catch (e) { return json(res, 400, { error: 'No se pudo leer la petición.' }); }
+        try { return json(res, 200, admin.setOrderStatus(decodeURIComponent(orderMatch[1]), body.status)); }
+        catch (e) { if (!sendKnownError(res, e, admin.AdminError)) throw e; }
+        return;
+      }
+
+      if (url.pathname === '/api/admin/stock' && req.method === 'GET') return json(res, 200, admin.listStock());
+
+      const stockMatch = STOCK_ITEM_RE.exec(url.pathname);
+      if (stockMatch && req.method === 'PUT') {
+        if (!isJSON(req)) return json(res, 400, { error: 'Formato de petición inválido.' });
+        let body;
+        try { body = await readJSON(req, ADMIN_BODY_MAX); } catch (e) { return json(res, 400, { error: 'No se pudo leer la petición.' }); }
+        try { return json(res, 200, admin.setStock(decodeURIComponent(stockMatch[1]), body.qty)); }
+        catch (e) { if (!sendKnownError(res, e, admin.AdminError)) throw e; }
+        return;
+      }
+
+      return json(res, 404, { error: 'Ruta del administrador no encontrada.' });
     }
 
     let p = decodeURIComponent(url.pathname); if (p === '/') p = '/index.html';
@@ -66,4 +132,6 @@ http.createServer(async (req, res) => {
     if (rel.startsWith('..') || /(^|[\\/])(server|node_modules|\.[^\\/]*)([\\/]|$)/.test(rel)) { res.writeHead(404); return res.end('No encontrado'); }
     sendFile(res, f);
   } catch (e) { json(res, 500, { error: 'Error del servidor.' }); }
-}).listen(PORT, () => console.log(`Trama Studio en http://localhost:${PORT}  (fotos realistas: ${enabled() ? 'activas' : 'sin configurar'})`));
+}).listen(PORT, () => console.log(
+  `Trama Studio en http://localhost:${PORT}  (administrador: ${admin.configured() ? 'activo' : 'sin configurar'})`
+));
