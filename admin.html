@@ -1,0 +1,75 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/admin.css">
+<title>Administrador | Trama Studio</title></head>
+<body data-page="admin">
+<main class="wrap admin">
+  <h1 class="admin-title">Administrador</h1>
+
+  <section class="admin-login stitch" id="admin-login">
+    <form id="login-form" novalidate>
+      <div class="form-field">
+        <label for="admin-password">Contraseña del administrador</label>
+        <input type="password" id="admin-password" required autocomplete="current-password">
+      </div>
+      <div class="status" id="login-status" role="status"></div>
+      <button type="submit" class="btn btn-primary" id="login-submit">Entrar</button>
+    </form>
+  </section>
+
+  <section class="admin-panel" id="admin-panel" hidden>
+    <div class="admin-bar">
+      <nav class="admin-tabs" role="tablist" aria-label="Secciones del administrador">
+        <button type="button" class="admin-tab" id="tab-orders" role="tab" aria-selected="true">Pedidos</button>
+        <button type="button" class="admin-tab" id="tab-stock" role="tab" aria-selected="false">Stock</button>
+      </nav>
+      <button type="button" class="btn btn-ghost" id="logout-btn">Cerrar sesión</button>
+    </div>
+
+    <section class="admin-section" id="panel-orders">
+      <div class="admin-filters">
+        <label class="visually-hidden" for="filter-status">Filtrar por estado</label>
+        <select id="filter-status">
+          <option value="">Todos los estados</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="pagado">Pagado</option>
+          <option value="en_produccion">En producción</option>
+          <option value="enviado">Enviado</option>
+          <option value="entregado">Entregado</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
+        <label class="visually-hidden" for="filter-q">Buscar por folio o correo</label>
+        <input type="search" id="filter-q" placeholder="Buscar folio o correo">
+      </div>
+      <div class="status" id="orders-status" role="status"></div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="orders-body"></tbody>
+        </table>
+      </div>
+      <div class="admin-pagination" id="orders-pagination"></div>
+    </section>
+
+    <section class="admin-section" id="panel-stock" hidden>
+      <div class="status" id="stock-status" role="status"></div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Producto</th><th>Corte</th><th>Tallas</th><th>Existencias</th><th></th></tr></thead>
+          <tbody id="stock-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+</main>
+
+<dialog class="order-dialog stitch" id="order-dialog">
+  <div class="order-dialog-head">
+    <h2 id="order-dialog-title"></h2>
+    <button type="button" class="admin-dialog-close" id="order-dialog-close" aria-label="Cerrar detalle del pedido">&times;</button>
+  </div>
+  <div id="order-dialog-body"></div>
+</dialog>
+
+<script src="js/data.js"></script><script src="js/components.js"></script><script src="js/admin.js"></script></body></html>

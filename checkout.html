@@ -1,0 +1,91 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/cart.css"><title>Pagar pedido | Trama Studio</title>
+<meta name="description" content="Confirma tus datos de envío y elige un método de pago simulado para tu pedido."><link rel="stylesheet" href="css/checkout.css"></head>
+<body data-page="checkout"><div id="site-header"></div>
+<main class="wrap checkout">
+<h1 class="checkout-title">Confirma tu pedido</h1>
+
+<div class="checkout-empty stitch" id="checkout-empty" hidden>
+  <p>Tu carrito está vacío.</p>
+  <div class="actions">
+    <a class="btn btn-primary" href="personalizar.html">Personalizar una playera</a>
+    <a class="btn btn-ghost" href="index.html#stock">Ver stock</a>
+  </div>
+</div>
+
+<div class="checkout-grid" id="checkout-content">
+  <form id="checkout-form" class="checkout-form" novalidate>
+    <fieldset class="step">
+      <legend>Contacto</legend>
+      <div class="form-field">
+        <label for="ck-email">Correo electrónico</label>
+        <input type="email" id="ck-email" required>
+        <span class="field-err" id="err-email"></span>
+      </div>
+    </fieldset>
+
+    <fieldset class="step">
+      <legend>Dirección de envío</legend>
+      <div class="form-row-2">
+        <div class="form-field"><label for="ck-first">Nombre(s)</label><input type="text" id="ck-first" required><span class="field-err" id="err-first"></span></div>
+        <div class="form-field"><label for="ck-last">Apellidos</label><input type="text" id="ck-last" required><span class="field-err" id="err-last"></span></div>
+      </div>
+      <div class="form-field"><label for="ck-address">Calle y número</label><input type="text" id="ck-address" required><span class="field-err" id="err-address"></span></div>
+      <div class="form-row-3">
+        <div class="form-field"><label for="ck-city">Ciudad</label><input type="text" id="ck-city" required><span class="field-err" id="err-city"></span></div>
+        <div class="form-field"><label for="ck-state">Estado</label><input type="text" id="ck-state" required><span class="field-err" id="err-state"></span></div>
+        <div class="form-field"><label for="ck-zip">Código postal</label><input type="text" id="ck-zip" maxlength="5" inputmode="numeric" required><span class="field-err" id="err-zip"></span></div>
+      </div>
+      <div class="form-field"><label for="ck-phone">Teléfono (paquetería)</label><input type="tel" id="ck-phone" required><span class="field-err" id="err-phone"></span></div>
+    </fieldset>
+
+    <fieldset class="step">
+      <legend>Método de pago (simulado)</legend>
+      <div class="pay-methods" id="pay-methods">
+        <label class="pay-opt active">
+          <input type="radio" name="pay" value="card" checked>
+          <span><strong>Tarjeta de crédito o débito</strong><small>Visa, Mastercard</small></span>
+        </label>
+        <label class="pay-opt">
+          <input type="radio" name="pay" value="oxxo">
+          <span><strong>Efectivo en OXXO</strong><small>Genera una ficha de pago con código de barras</small></span>
+        </label>
+        <label class="pay-opt">
+          <input type="radio" name="pay" value="spei">
+          <span><strong>Transferencia SPEI</strong><small>CLABE interbancaria inmediata</small></span>
+        </label>
+      </div>
+      <div class="card-fields" id="card-fields">
+        <div class="form-field"><label for="ck-card-num">Número de tarjeta (simulado)</label><input type="text" id="ck-card-num" maxlength="19" placeholder="4532 0123 4567 8910"></div>
+        <div class="form-row-2">
+          <div class="form-field"><label for="ck-card-exp">Vencimiento</label><input type="text" id="ck-card-exp" maxlength="5" placeholder="MM/AA"></div>
+          <div class="form-field"><label for="ck-card-cvv">CVV</label><input type="text" id="ck-card-cvv" maxlength="4" placeholder="123"></div>
+        </div>
+      </div>
+    </fieldset>
+
+    <p class="checkout-disclaimer">Tienda prototipo: no se realiza ningún cobro real.</p>
+    <div class="status" id="checkout-status" role="status"></div>
+    <button type="submit" class="btn btn-primary btn-block" id="checkout-submit">Confirmar pedido</button>
+  </form>
+
+  <aside class="checkout-summary stitch">
+    <h2>Resumen</h2>
+    <div class="summary-items" id="summary-items"></div>
+    <div class="cart-totals" id="summary-totals"></div>
+  </aside>
+</div>
+</main>
+
+<div class="modal-backdrop" id="success-backdrop" hidden>
+  <div class="modal stitch" id="success-modal" role="dialog" aria-modal="true" aria-labelledby="success-title">
+    <h2 id="success-title">Pedido recibido</h2>
+    <p>Número de orden: <strong id="success-id"></strong></p>
+    <p id="success-detail" class="meta"></p>
+    <div class="actions">
+      <a class="btn btn-primary" href="index.html">Seguir comprando</a>
+    </div>
+  </div>
+</div>
+
+<div id="site-footer"></div>
+<script src="js/data.js"></script><script src="js/components.js"></script><script src="js/cart.js"></script><script src="js/checkout.js"></script></body></html>
