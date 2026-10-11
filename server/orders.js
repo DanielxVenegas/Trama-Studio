@@ -1,6 +1,6 @@
 /* Pedidos: valida los datos del cliente y las prendas, recalcula precios en el servidor
    (nunca confía en los que manda el navegador), descuenta stock de forma transaccional
-   y guarda el pedido con un folio único. El pago sigue simulado: nunca llegan datos de tarjeta aquí. */
+   y guarda el pedido con un folio único después de confirmar el pago. */
 const { db, tx } = require('./db');
 const { CATALOG, totals } = require('./catalog');
 
@@ -81,7 +81,7 @@ function validateItem(raw) {
   };
 }
 
-function createOrder(body) {
+function prepareOrder(body) {
   const b = body || {};
   const customer = validateCustomer(b.customer);
   const payMethod = str(b.payMethod);
@@ -96,46 +96,91 @@ function createOrder(body) {
   const promo = promoInput && CATALOG.PROMOS[promoInput] != null ? promoInput : null;
   const { subtotal, discount, shipping, total } = totals(items, promo);
 
-  return tx(() => {
-    /* Suma las cantidades por producto para descontar el stock en un solo UPDATE por producto */
-    const need = new Map();
-    for (const it of items) if (it.kind === 'stock') need.set(it.productId, (need.get(it.productId) || 0) + it.qty);
+  return { customer, payMethod, promo, items, subtotal, discount, shipping, total };
+}
 
-    const dec = db.prepare("UPDATE stock SET qty = qty - ?, updated_at = datetime('now') WHERE product_id = ? AND qty >= ?");
-    for (const [productId, qty] of need) {
-      const r = dec.run(qty, productId, qty);
-      if (Number(r.changes) === 0) {
-        const name = (items.find(i => i.productId === productId) || {}).name || productId;
-        throw new OrderError(409, `Ya no hay stock suficiente de "${name}".`);
-      }
+function insertOrder(order) {
+  const { customer, payMethod, promo, items, subtotal, discount, shipping, total } = order;
+  /* Suma las cantidades por producto para descontar el stock en un solo UPDATE por producto */
+  const need = new Map();
+  for (const it of items) if (it.kind === 'stock') need.set(it.productId, (need.get(it.productId) || 0) + it.qty);
+
+  const dec = db.prepare("UPDATE stock SET qty = qty - ?, updated_at = datetime('now') WHERE product_id = ? AND qty >= ?");
+  for (const [productId, qty] of need) {
+    const r = dec.run(qty, productId, qty);
+    if (Number(r.changes) === 0) {
+      const name = (items.find(i => i.productId === productId) || {}).name || productId;
+      throw new OrderError(409, `Ya no hay stock suficiente de "${name}".`);
     }
+  }
 
-    const insertOrder = db.prepare(`
+  const insert = db.prepare(`
       INSERT INTO orders (email, first_name, last_name, phone, address, city, state, zip,
         pay_method, promo_code, subtotal, discount, shipping, total)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    const r = insertOrder.run(
-      customer.email, customer.firstName, customer.lastName, customer.phone,
-      customer.address, customer.city, customer.state, customer.zip,
-      payMethod, promo, subtotal, discount, shipping, total
-    );
-    const orderId = Number(r.lastInsertRowid);
-    const folio = 'TS-' + String(orderId).padStart(5, '0');
-    db.prepare('UPDATE orders SET folio = ? WHERE id = ?').run(folio, orderId);
+  const r = insert.run(
+    customer.email, customer.firstName, customer.lastName, customer.phone,
+    customer.address, customer.city, customer.state, customer.zip,
+    payMethod, promo, subtotal, discount, shipping, total
+  );
+  const orderId = Number(r.lastInsertRowid);
+  const folio = 'TS-' + String(orderId).padStart(5, '0');
+  db.prepare('UPDATE orders SET folio = ? WHERE id = ?').run(folio, orderId);
 
-    const insertItem = db.prepare(`
+  const insertItem = db.prepare(`
       INSERT INTO order_items (order_id, kind, product_id, name, cut, color, size, qty, unit_price,
         text, font_id, text_color, preset_key, notes, thumb)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    for (const it of items) {
-      insertItem.run(orderId, it.kind, it.productId, it.name, it.cut, it.color, it.size, it.qty, it.unitPrice,
-        it.text, it.fontId, it.textColor, it.presetKey, it.notes, it.thumb);
+  for (const it of items) {
+    insertItem.run(orderId, it.kind, it.productId, it.name, it.cut, it.color, it.size, it.qty, it.unitPrice,
+      it.text, it.fontId, it.textColor, it.presetKey, it.notes, it.thumb);
+  }
+
+  return { folio, total };
+}
+
+function createOrder(body) {
+  const order = prepareOrder(body);
+  return tx(() => insertOrder(order));
+}
+
+function quoteOrder(body) {
+  const { subtotal, discount, shipping, total, items } = prepareOrder(body);
+  return {
+    subtotal, discount, shipping, total,
+    productsTotal: subtotal - discount,
+    description: items.map(it => `${it.qty}x ${it.name} (${it.size})`).join(', ').slice(0, 500)
+  };
+}
+
+function savePendingCheckout(sessionId, body) {
+  if (!/^cs_test_[A-Za-z0-9]+$/.test(sessionId)) throw new OrderError(400, 'La sesión de pago no es válida.');
+  prepareOrder(body);
+  db.prepare('INSERT INTO checkout_sessions (session_id, payload) VALUES (?, ?)').run(sessionId, JSON.stringify(body));
+}
+
+function completePaidCheckout(session) {
+  if (!session || !/^cs_test_[A-Za-z0-9]+$/.test(session.id)) throw new OrderError(400, 'La sesión de pago no es válida.');
+  if (session.payment_status !== 'paid') throw new OrderError(409, 'El pago aún no está confirmado.');
+  return tx(() => {
+    const pending = db.prepare('SELECT payload, folio FROM checkout_sessions WHERE session_id = ?').get(session.id);
+    if (!pending) throw new OrderError(503, 'El pedido todavía no está listo. Intenta de nuevo.');
+    const order = prepareOrder(JSON.parse(pending.payload));
+    if (session.mode !== 'payment' || session.currency !== 'mxn' || session.amount_total !== order.total * 100) {
+      throw new OrderError(409, 'El total confirmado por Stripe no coincide con el pedido.');
+    }
+    if (pending.folio) {
+      const order = db.prepare('SELECT email, total FROM orders WHERE folio = ?').get(pending.folio);
+      return { folio: pending.folio, email: order.email, total: order.total };
     }
 
-    return { folio, total };
+    const result = insertOrder(order);
+    db.prepare("UPDATE orders SET status = 'pagado' WHERE folio = ?").run(result.folio);
+    db.prepare('UPDATE checkout_sessions SET folio = ? WHERE session_id = ?').run(result.folio, session.id);
+    return { ...result, email: order.customer.email };
   });
 }
 
-module.exports = { createOrder, OrderError };
+module.exports = { createOrder, quoteOrder, savePendingCheckout, completePaidCheckout, OrderError };

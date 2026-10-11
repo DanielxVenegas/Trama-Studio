@@ -1,5 +1,5 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/cart.css"><title>Pagar pedido | Trama Studio</title>
-<meta name="description" content="Confirma tus datos de envío y elige un método de pago simulado para tu pedido."><link rel="stylesheet" href="css/checkout.css"></head>
+<meta name="description" content="Confirma tus datos de envío y paga de forma segura con Stripe."><link rel="stylesheet" href="css/checkout.css"></head>
 <body data-page="checkout"><div id="site-header"></div>
 <main class="wrap checkout">
 <h1 class="checkout-title">Confirma tu pedido</h1>
@@ -39,31 +39,11 @@
     </fieldset>
 
     <fieldset class="step">
-      <legend>Método de pago (simulado)</legend>
-      <div class="pay-methods" id="pay-methods">
-        <label class="pay-opt active">
-          <input type="radio" name="pay" value="card" checked>
-          <span><strong>Tarjeta de crédito o débito</strong><small>Visa, Mastercard</small></span>
-        </label>
-        <label class="pay-opt">
-          <input type="radio" name="pay" value="oxxo">
-          <span><strong>Efectivo en OXXO</strong><small>Genera una ficha de pago con código de barras</small></span>
-        </label>
-        <label class="pay-opt">
-          <input type="radio" name="pay" value="spei">
-          <span><strong>Transferencia SPEI</strong><small>CLABE interbancaria inmediata</small></span>
-        </label>
-      </div>
-      <div class="card-fields" id="card-fields">
-        <div class="form-field"><label for="ck-card-num">Número de tarjeta (simulado)</label><input type="text" id="ck-card-num" maxlength="19" placeholder="4532 0123 4567 8910"></div>
-        <div class="form-row-2">
-          <div class="form-field"><label for="ck-card-exp">Vencimiento</label><input type="text" id="ck-card-exp" maxlength="5" placeholder="MM/AA"></div>
-          <div class="form-field"><label for="ck-card-cvv">CVV</label><input type="text" id="ck-card-cvv" maxlength="4" placeholder="123"></div>
-        </div>
-      </div>
+      <legend>Pago</legend>
+      <p class="stripe-payment-note">Pagarás de forma segura en Stripe. Los datos de tu tarjeta nunca pasan por Trama Studio.</p>
     </fieldset>
 
-    <p class="checkout-disclaimer">Tienda prototipo: no se realiza ningún cobro real.</p>
+    <p class="checkout-disclaimer">Modo de prueba de Stripe: no se realizará ningún cobro real.</p>
     <div class="status" id="checkout-status" role="status"></div>
     <button type="submit" class="btn btn-primary btn-block" id="checkout-submit">Confirmar pedido</button>
   </form>
