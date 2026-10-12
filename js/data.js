@@ -38,12 +38,36 @@ const FREE_SHIPPING = 899;  // a partir de este subtotal el envío es gratis
 /* Códigos promocionales: clave en mayúsculas -> descuento decimal */
 const PROMOS = { TRAMA10: .10, LANZAMIENTO: .15 };
 
-/* Tipografías disponibles para el texto personalizado (ya cargadas en <head>) */
+/* Tipografías disponibles para el texto personalizado. Cada una es de un estilo distinto (sans moderna,
+   condensada, serif, manuscrita y monoespaciada). Se cargan desde el <link> de Google Fonts del <head>
+   de index, checkout, personalizar y 404: si agregas una, súmala también ahí.
+   - avg: ancho medio de una letra en em; solo se usa para estimar el texto en las vistas SVG.
+   - lh: interlineado recomendado para cuando el texto se reparte en dos renglones. */
 const FONTS = [
-  { id: 'display', name: 'Bricolage (Titular)', family: "'Bricolage Grotesque', sans-serif", weight: 800, style: 'normal' },
-  { id: 'body',    name: 'Figtree (Limpia)',    family: "'Figtree', sans-serif",              weight: 700, style: 'normal' },
-  { id: 'script',  name: 'Figtree Itálica',     family: "'Figtree', sans-serif",              weight: 700, style: 'italic' }
+  { id: 'display',   name: 'Bricolage (Moderna)',     family: "'Bricolage Grotesque', 'Arial Black', sans-serif", weight: 800, style: 'normal', avg: .65, lh: 1.05 },
+  { id: 'condensed', name: 'Bebas Neue (Condensada)', family: "'Bebas Neue', Impact, 'Arial Narrow', sans-serif",  weight: 400, style: 'normal', avg: .40, lh: 1.0 },
+  { id: 'serif',     name: 'Playfair (Elegante)',     family: "'Playfair Display', Georgia, serif",               weight: 800, style: 'normal', avg: .66, lh: 1.1 },
+  { id: 'script',    name: 'Pacifico (Manuscrita)',   family: "'Pacifico', 'Brush Script MT', cursive",           weight: 400, style: 'normal', avg: .66, lh: 1.3 },
+  { id: 'mono',      name: 'Space Mono (Máquina)',    family: "'Space Mono', 'Courier New', monospace",           weight: 700, style: 'normal', avg: .62, lh: 1.15 }
 ];
+
+/* Reparte el texto en 1 o 2 renglones (cortando en espacios) y devuelve el tamaño de letra más grande
+   que cabe en la caja de impresión, sin deformar las letras. Usa 2 renglones solo si así el texto
+   crece al menos 15 %. `medir(renglon)` debe dar el ancho del renglón en em; si no se pasa se estima
+   con font.avg (para el SVG, donde no se puede medir el texto). */
+function fitText(text, font, boxW, boxH, maxFs, medir) {
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return null;
+  const m = medir || (s => s.length * font.avg), lh = font.lh;
+  const plan = lines => ({ lines, lh, fs: Math.min(maxFs, boxW / Math.max(...lines.map(m)), boxH / (lines.length * lh)) });
+  const one = plan([words.join(' ')]);
+  let two = null;
+  for (let i = 1; i < words.length; i++) {
+    const p = plan([words.slice(0, i).join(' '), words.slice(i).join(' ')]);
+    if (!two || p.fs > two.fs) two = p;
+  }
+  return two && two.fs > one.fs * 1.15 ? two : one;
+}
 
 const TEXT_COLORS = [
   { name: 'Tinta',   hex: '#101B33' },
@@ -117,8 +141,13 @@ function printLayerSVG(cut, { img, presetKey, text, font, textColor } = {}) {
     out += `<svg x="${cx - a / 2}" y="${top}" width="${a}" height="${a}" viewBox="0 0 140 140">${PRESETS[presetKey].inner}</svg>`;
   }
   if (text) {
-    const f = font || FONTS[0], ty = hasArt ? top + a + 14 : top + a / 2 + 6, fs = hasArt ? 11 : 13;
-    out += `<text x="${cx}" y="${ty}" text-anchor="middle" font-family="${f.family}" font-weight="${f.weight}" font-style="${f.style}" font-size="${fs}" fill="${textColor || '#101B33'}">${escapeXML(text)}</text>`;
+    /* El texto se ajusta al ancho del pecho (más grande si va solo; en una franja bajo el arte si hay arte) */
+    const f = font || FONTS[0], bw = a * 1.5;
+    const zone = hasArt ? { h: bw * .26, max: bw * .16, cy: top + a + 3 + bw * .13 } : { h: bw, max: bw * .26, cy: top + a / 2 };
+    const fit = fitText(text, f, bw, zone.h, zone.max);
+    const step = fit.fs * fit.lh, y0 = zone.cy - (fit.lines.length * step) / 2 + step / 2;
+    out += `<text text-anchor="middle" dominant-baseline="central" font-family="${f.family}" font-weight="${f.weight}" font-style="${f.style}" font-size="${fit.fs.toFixed(2)}" fill="${textColor || '#101B33'}">`
+      + fit.lines.map((ln, i) => `<tspan x="${cx}" y="${(y0 + i * step).toFixed(2)}">${escapeXML(ln)}</tspan>`).join('') + '</text>';
   }
   return out;
 }

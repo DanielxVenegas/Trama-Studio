@@ -1,4 +1,4 @@
-/* Estudio de personalización: corte, color, arte, texto, talla y cantidad, con precio en vivo */
+/* Estudio de personalización: corte, color, arte, texto, talla y cantidad, con vista 3D y precio en vivo */
 const q = new URLSearchParams(location.search), saved = readDesign();
 const st = {
   cut: CUTS[q.get('cut')] ? q.get('cut') : (CUTS[saved.cut] ? saved.cut : 'regular'),
@@ -15,17 +15,40 @@ const st = {
 };
 const $ = id => document.getElementById(id), status = $('status');
 
+/* Vista 3D; si no hay WebGL o Three.js no cargó, se usa la vista plana (SVG) */
+$('stage').hidden = false;
+const viewer = createShirtViewer($('stage'));
+$('stage').hidden = !viewer;
+$('viewer-tools').hidden = !viewer;
+$('preview').hidden = !!viewer;
+
 const currentFont = () => FONTS.find(f => f.id === st.fontId) || FONTS[0];
 const unitPrice = () => CUTS[st.cut].price + PRINT_FEE;
 const hasArt = () => !!st.img || (st.presetKey && st.presetKey !== 'ninguno') || !!st.text;
 
 function markSide() { $('sides').querySelectorAll('[data-side]').forEach(b => b.setAttribute('aria-pressed', b.dataset.side === st.side)); }
 
+/* Regenera el diseño 3D solo cuando cambia el arte o el texto (no con cada cambio de talla o cantidad) */
+let printKey = null;
+function syncPrint() {
+  const key = [st.img, st.presetKey, st.text, st.fontId, st.textColor];
+  if (printKey && key.every((v, i) => v === printKey[i])) return;
+  printKey = key;
+  viewer.setPrint({ img: st.img, preset: st.img ? null : st.presetKey, text: st.text, font: currentFont(), textColor: st.textColor })
+    .catch(err => { status.className = 'status err'; status.textContent = typeof err === 'string' ? err : 'No se pudo generar el diseño.'; });
+}
+
 function render() {
-  $('preview').innerHTML = shirtSVG(st.color, st.cut, {
-    img: st.img, presetKey: st.img ? null : st.presetKey, side: st.side,
-    text: st.text, font: currentFont(), textColor: st.textColor
-  });
+  if (viewer) {
+    viewer.setModel(st.cut, st.color);
+    viewer.setSide(st.side);
+    syncPrint();
+  } else {
+    $('preview').innerHTML = shirtSVG(st.color, st.cut, {
+      img: st.img, presetKey: st.img ? null : st.presetKey, side: st.side,
+      text: st.text, font: currentFont(), textColor: st.textColor
+    });
+  }
   $('preview-note').textContent = hasArt() ? 'Vista previa de tu playera personalizada.' : 'Elige corte y color. Tu diseño aparecerá aquí.';
   markSide();
 
@@ -33,7 +56,7 @@ function render() {
   $('swatches').innerHTML = swatchesHTML(st.color);
   $('color-note').innerHTML = `Color seleccionado: <strong>${(COLORS.find(c => c.hex.toLowerCase() === st.color.toLowerCase()) || {}).name || st.color}</strong>`;
   $('presets').innerHTML = presetsHTML(st.img ? null : st.presetKey);
-  $('fonts').innerHTML = fontsHTML(st.fontId);
+  $('fonts').innerHTML = fontsHTML(st.fontId, st.text);
   $('text-colors').innerHTML = textColorsHTML(st.textColor);
   $('sizes').innerHTML = sizePillsHTML(st.size);
   $('qty-val').textContent = st.qty;
@@ -81,7 +104,27 @@ $('sizes').addEventListener('click', e => { const b = e.target.closest('[data-si
 $('qty-minus').addEventListener('click', () => { if (st.qty > 1) { st.qty--; render(); } });
 $('qty-plus').addEventListener('click', () => { if (st.qty < 20) { st.qty++; render(); } else toast('Máximo 20 piezas por pedido. Escríbenos para mayoreo.'); });
 
-$('to3d').addEventListener('click', () => { saveDesign(st); location.href = 'visor-3d.html'; });
+/* Herramientas de la vista 3D: giro, fondo, vista previa y descarga */
+if (viewer) {
+  $('views').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.id === 'spin') { const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on); viewer.setSpin(on); }
+    else if (b.dataset.view) viewer.turnTo(+b.dataset.view);
+  });
+  $('bgs').addEventListener('click', e => {
+    const b = e.target.closest('[data-bg]'); if (!b) return;
+    viewer.setBackground(b.dataset.bg);
+    $('bgs').querySelectorAll('[data-bg]').forEach(s => s.setAttribute('aria-pressed', s === b));
+  });
+  $('shot').addEventListener('click', () => {
+    const a = document.createElement('a'); a.download = 'mi-playera-3d.png'; a.href = viewer.capture(); a.click();
+  });
+  const dlg = $('preview-dlg');
+  $('open-preview').addEventListener('click', () => {
+    const url = viewer.capture(); $('preview-img').src = url; $('preview-dl').href = url; dlg.showModal();
+  });
+  $('preview-x').addEventListener('click', () => dlg.close());
+}
 
 $('reset').addEventListener('click', () => {
   Object.assign(st, { cut: 'regular', color: '#2F4BFF', img: null, fileName: '', presetKey: 'ninguno', text: '', fontId: FONTS[0].id, textColor: TEXT_COLORS[0].hex, side: 'front', size: 'M', qty: 1 });

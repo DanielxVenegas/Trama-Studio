@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/cart.css"><title>Pagar pedido | Trama Studio</title>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:wght@700;800&family=Figtree:wght@400;600;700&family=Pacifico&family=Playfair+Display:wght@800&family=Space+Mono:wght@700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/cart.css"><title>Pagar pedido | Trama Studio</title>
 <meta name="description" content="Confirma tus datos de envío y paga de forma segura con Stripe."><link rel="stylesheet" href="css/checkout.css"></head>
 <body data-page="checkout"><div id="site-header"></div>
 <main class="wrap checkout">
@@ -62,10 +62,11 @@
     <p>Número de orden: <strong id="success-id"></strong></p>
     <p id="success-detail" class="meta"></p>
     <div class="actions">
+      <button type="button" class="btn btn-sun" id="success-ticket" hidden>Descargar ticket (PDF)</button>
       <a class="btn btn-primary" href="index.html">Seguir comprando</a>
     </div>
   </div>
 </div>
 
 <div id="site-footer"></div>
-<script src="js/data.js"></script><script src="js/components.js"></script><script src="js/cart.js"></script><script src="js/checkout.js"></script></body></html>
+<script src="js/data.js"></script><script src="js/components.js"></script><script src="js/cart.js"></script><script src="js/ticket-pdf.js"></script><script src="js/checkout.js"></script></body></html>

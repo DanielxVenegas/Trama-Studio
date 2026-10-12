@@ -1,0 +1,5 @@
+.error-page{padding:3rem 1.5rem;text-align:center;display:flex;flex-direction:column;align-items:center;gap:1rem;margin-block:3rem}
+.error-code{font:800 clamp(3.5rem,12vw,7rem) var(--display);line-height:1;letter-spacing:-.04em;color:var(--cobalt)}
+.error-title{font-size:clamp(1.8rem,5vw,2.8rem)}
+.error-page .lead{max-width:40ch}
+.error-page .actions{display:flex;gap:.8rem;flex-wrap:wrap;justify-content:center;margin-top:.5rem}

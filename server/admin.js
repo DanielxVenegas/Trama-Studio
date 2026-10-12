@@ -1,8 +1,10 @@
 /* Panel del administrador: login por contraseña con cookie firmada (HMAC, sin librerías),
-   listado y detalle de pedidos, cambio de estado (repone stock al cancelar) y edición de stock. */
+   listado y detalle de pedidos, cambio de estado (al cancelar reembolsa el pago en Stripe y repone
+   stock) y edición de stock. */
 const crypto = require('crypto');
 const { db, tx } = require('./db');
 const { CATALOG } = require('./catalog');
+const payments = require('./payments');
 
 const { ADMIN_PASSWORD, SESSION_SECRET, PUBLIC_URL } = process.env;
 const COOKIE_NAME = 'trama_admin';
@@ -110,6 +112,25 @@ function setOrderStatus(folio, status) {
   });
 }
 
+/* Cambio de estado desde el panel. Al cancelar un pedido pagado con Stripe se reembolsa primero:
+   si el reembolso falla el pedido NO se cancela (ni se repone stock), para no quedar cancelado y cobrado. */
+async function updateOrderStatus(folio, status) {
+  if (!STATUSES.includes(status)) throw new AdminError(400, 'Estado inválido.');
+  const current = db.prepare('SELECT status FROM orders WHERE folio = ?').get(folio);
+  if (!current) throw new AdminError(404, 'Pedido no encontrado.');
+
+  let refunded = false;
+  if (status === 'cancelado' && current.status !== 'cancelado') {
+    try {
+      refunded = (await payments.refundOrderPayment(folio)).refunded;
+    } catch (e) {
+      if (e instanceof payments.PaymentError) throw new AdminError(e.status, `No se canceló el pedido porque falló el reembolso en Stripe: ${e.message}`);
+      throw e;
+    }
+  }
+  return { ...setOrderStatus(folio, status), refunded };
+}
+
 function listStock() {
   const byId = new Map(db.prepare('SELECT product_id, qty FROM stock').all().map(r => [r.product_id, r.qty]));
   return CATALOG.PRODUCTS.map(p => ({ id: p.id, name: p.name, cut: p.cut, color: p.color, sizes: p.sizes, qty: byId.get(p.id) ?? 0 }));
@@ -126,5 +147,5 @@ function setStock(id, qty) {
 
 module.exports = {
   configured, isAuthed, login, sessionCookie, clearSessionCookie,
-  listOrders, getOrder, setOrderStatus, listStock, setStock, AdminError, STATUSES
+  listOrders, getOrder, setOrderStatus, updateOrderStatus, listStock, setStock, AdminError, STATUSES
 };

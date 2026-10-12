@@ -48,4 +48,4 @@ show('all');
 document.getElementById('cuts').innerHTML = Object.entries(CUTS).map(([k, c]) =>
   `<article class="card stitch"><div class="card-art">${shirtSVG('#E3E8F2', k)}</div>
   <div class="card-body"><h3>${c.name}</h3><p class="meta">${c.desc}</p>
-  <a class="btn btn-ghost" href="visor-3d.html?cut=${k}">Verlo en 3D</a></div></article>`).join('');
+  <a class="btn btn-ghost" href="personalizar.html?cut=${k}">Verlo en 3D</a></div></article>`).join('');

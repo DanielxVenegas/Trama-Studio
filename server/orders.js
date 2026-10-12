@@ -12,8 +12,9 @@ const THUMB_RE = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+=*)$/;
 const PAY_METHODS = new Set(['card', 'oxxo', 'spei']);
 const MAX_THUMB_BYTES = 300 * 1024;
 
+/* `code` distingue casos que el flujo de pagos debe tratar distinto (p. ej. 'out_of_stock' dispara reembolso) */
 class OrderError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  constructor(status, message, code) { super(message); this.status = status; this.code = code; }
 }
 
 const str = v => (typeof v === 'string' ? v.trim() : '');
@@ -110,7 +111,7 @@ function insertOrder(order) {
     const r = dec.run(qty, productId, qty);
     if (Number(r.changes) === 0) {
       const name = (items.find(i => i.productId === productId) || {}).name || productId;
-      throw new OrderError(409, `Ya no hay stock suficiente de "${name}".`);
+      throw new OrderError(409, `Ya no hay stock suficiente de "${name}".`, 'out_of_stock');
     }
   }
 
@@ -172,15 +173,40 @@ function completePaidCheckout(session) {
       throw new OrderError(409, 'El total confirmado por Stripe no coincide con el pedido.');
     }
     if (pending.folio) {
-      const order = db.prepare('SELECT email, total FROM orders WHERE folio = ?').get(pending.folio);
-      return { folio: pending.folio, email: order.email, total: order.total };
+      const existing = db.prepare('SELECT email, total FROM orders WHERE folio = ?').get(pending.folio);
+      return { folio: pending.folio, email: existing.email, total: existing.total, created: false };
     }
 
     const result = insertOrder(order);
     db.prepare("UPDATE orders SET status = 'pagado' WHERE folio = ?").run(result.folio);
     db.prepare('UPDATE checkout_sessions SET folio = ? WHERE session_id = ?').run(result.folio, session.id);
-    return { ...result, email: order.customer.email };
+    return { ...result, email: order.customer.email, created: true, order };
   });
 }
 
-module.exports = { createOrder, quoteOrder, savePendingCheckout, completePaidCheckout, OrderError };
+/* Borrador de pago de una sesión de Stripe (undefined si no existe). `folio` solo se llena cuando ya hay pedido */
+function getPendingCheckout(sessionId) {
+  return db.prepare('SELECT session_id, folio, created_at FROM checkout_sessions WHERE session_id = ?').get(sessionId);
+}
+
+/* Descarta el borrador de una sesión que expiró o se abandonó. Nunca toca los que ya tienen pedido. */
+function discardPendingCheckout(sessionId) {
+  return Number(db.prepare('DELETE FROM checkout_sessions WHERE session_id = ? AND folio IS NULL').run(sessionId).changes);
+}
+
+/* Limpia borradores sin pedido con más de `hours` horas. Devuelve cuántos borró. */
+function purgeStaleCheckouts(hours = 24) {
+  const h = Math.max(1, Math.floor(Number(hours)) || 24);
+  return Number(db.prepare("DELETE FROM checkout_sessions WHERE folio IS NULL AND created_at < datetime('now', ?)").run(`-${h} hours`).changes);
+}
+
+/* Sesión de Stripe que originó un pedido (undefined para pedidos que no pasaron por Stripe) */
+function findCheckoutSessionByFolio(folio) {
+  const row = db.prepare('SELECT session_id FROM checkout_sessions WHERE folio = ?').get(folio);
+  return row ? row.session_id : undefined;
+}
+
+module.exports = {
+  createOrder, prepareOrder, quoteOrder, savePendingCheckout, completePaidCheckout,
+  getPendingCheckout, discardPendingCheckout, purgeStaleCheckouts, findCheckoutSessionByFolio, OrderError
+};
