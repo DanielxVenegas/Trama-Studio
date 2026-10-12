@@ -1,17 +1,41 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/cart.css"><title>Personaliza tu playera | Trama Studio</title>
-<meta name="description" content="Elige corte, color, arte y texto. Mira el precio al momento y agrega tu playera al carrito."><link rel="stylesheet" href="css/personalizar.css"></head>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bricolage+Grotesque:wght@700;800&family=Figtree:wght@400;600;700&family=Pacifico&family=Playfair+Display:wght@800&family=Space+Mono:wght@700&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/cart.css"><title>Personaliza tu playera en 3D | Trama Studio</title>
+<meta name="description" content="Elige corte, color, arte y texto y míralo en 3D. Mira el precio al momento y agrega tu playera al carrito."><link rel="stylesheet" href="css/personalizar.css"></head>
 <body data-page="custom"><div id="site-header"></div>
 <main class="wrap studio">
 <h1 class="studio-title">Personaliza tu playera</h1>
 
 <div class="studio-grid">
   <div class="studio-preview stitch">
-    <div class="preview-toolbar seg" id="sides" role="group" aria-label="Lado de la prenda">
-      <button type="button" data-side="front" aria-pressed="true">Frente</button>
-      <button type="button" data-side="back" aria-pressed="false">Espalda</button>
+    <div class="preview-toolbar seg" id="sides" role="group" aria-label="Lado de la prenda donde va el diseño">
+      <button type="button" data-side="front" aria-pressed="true">Diseño al frente</button>
+      <button type="button" data-side="back" aria-pressed="false">Diseño en la espalda</button>
+    </div>
+    <div class="stage" id="stage" role="img" aria-label="Playera en 3D. Arrastra para girar; con Ctrl y la rueda se acerca." hidden>
+      <p class="hint">Arrastra para girar. Ctrl + rueda o pellizca para acercar.</p>
     </div>
     <div id="preview"></div>
     <p id="preview-note" class="preview-note">Elige corte y color. Tu diseño aparecerá aquí.</p>
+    <div class="viewer-tools" id="viewer-tools" hidden>
+      <div class="tool-row">
+        <span class="tool-label" id="views-label">Girar</span>
+        <div class="seg" id="views" role="group" aria-labelledby="views-label">
+          <button type="button" data-view="0">Frente</button>
+          <button type="button" data-view="3.14159">Espalda</button>
+          <button type="button" data-view="1.5708">Lado</button>
+          <button type="button" id="spin" aria-pressed="false">Giro automático</button>
+        </div>
+      </div>
+      <div class="tool-row">
+        <span class="tool-label" id="bgs-label">Fondo</span>
+        <div class="swatches swatches-sm" id="bgs" role="group" aria-labelledby="bgs-label">
+          <button type="button" class="swatch" data-bg="claro" style="--c:#E3E8F2" aria-label="Fondo claro" aria-pressed="true"></button>
+          <button type="button" class="swatch" data-bg="oscuro" style="--c:#16203d" aria-label="Fondo oscuro" aria-pressed="false"></button>
+          <button type="button" class="swatch" data-bg="sol" style="--c:#FFD23F" aria-label="Fondo amarillo" aria-pressed="false"></button>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="open-preview">Ver vista previa</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="shot">Descargar imagen</button>
+      </div>
+    </div>
   </div>
 
   <form id="form" class="studio-form" novalidate>
@@ -75,12 +99,19 @@
     </div>
 
     <div class="actions">
-      <button type="button" class="btn btn-ghost" id="to3d">Ver en 3D</button>
       <button type="button" class="btn btn-ghost" id="reset">Reiniciar</button>
       <button type="submit" class="btn btn-primary">Agregar al carrito</button>
     </div>
   </form>
 </div>
 </main>
+<dialog id="preview-dlg" class="stitch" aria-label="Vista previa de tu playera en 3D">
+  <img id="preview-img" alt="Vista previa de tu playera en 3D">
+  <div class="dlg-actions">
+    <a class="btn btn-primary" id="preview-dl" download="mi-playera-3d.png">Descargar PNG</a>
+    <button type="button" class="btn btn-ghost" id="preview-x">Cerrar</button>
+  </div>
+</dialog>
 <div id="site-footer"></div>
-<script src="js/data.js"></script><script src="js/components.js"></script><script src="js/cart.js"></script><script src="js/personalizar.js"></script></body></html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/data.js"></script><script src="js/components.js"></script><script src="js/cart.js"></script><script src="js/shirt-model.js"></script><script src="js/viewer3d.js"></script><script src="js/personalizar.js"></script></body></html>

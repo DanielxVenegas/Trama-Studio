@@ -3,7 +3,7 @@
   const page = document.body.dataset.page;
   const links = [
     ['index.html', 'Inicio', 'home'], ['index.html#stock', 'Stock'], ['index.html#cortes', 'Cortes'],
-    ['personalizar.html', 'Personalizar', 'custom'], ['visor-3d.html', 'Visor 3D', 'viewer']
+    ['personalizar.html', 'Personalizar en 3D', 'custom']
   ];
   const h = document.getElementById('site-header');
   if (h) h.innerHTML = `<header class="site-header"><div class="wrap bar">
@@ -89,13 +89,18 @@ function presetToImage(key, size = 480) {
 }
 
 /* Une el arte (archivo o estampado) y el texto personalizado en un solo PNG.
-   Se usa para la calcomanía 3D del visor, que solo puede recibir una imagen. */
+   Se usa para la calcomanía de la vista 3D, que solo puede recibir una imagen. */
 async function composePrint({ img, preset, text, font, textColor } = {}) {
   let src = img || null;
   if (!src && preset && preset !== 'ninguno') src = await presetToImage(preset, 480);
   if (!src && !text) return null;
 
-  try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
+  /* La tipografía elegida puede no haberse usado aún en la página: se pide explícitamente antes de dibujar */
+  const f = font || FONTS[0], fontAt = px => `${f.style} ${f.weight} ${px}px ${f.family}`;
+  try {
+    if (text && document.fonts && document.fonts.load) await document.fonts.load(fontAt(100), text);
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  } catch (e) {}
 
   const C = 640, c = document.createElement('canvas'); c.width = c.height = C;
   const g = c.getContext('2d');
@@ -108,11 +113,17 @@ async function composePrint({ img, preset, text, font, textColor } = {}) {
   }
 
   if (text) {
-    const f = font || FONTS[0], fs = src ? 46 : 64;
-    g.font = `${f.style} ${f.weight} ${fs}px ${f.family}`;
-    g.fillStyle = textColor || '#101B33';
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(text, C / 2, src ? 572 : C / 2, C - 60);
+    /* Texto solo: ocupa casi todo el ancho del área (hasta 150 px de alto por renglón).
+       Con arte: va en la franja inferior, bajo la imagen (hasta 72 px). */
+    g.font = fontAt(100);
+    const fit = fitText(text, f, C - 60, src ? 150 : 400, src ? 72 : 150, s => g.measureText(s).width / 100);
+    if (fit) {
+      const step = fit.fs * fit.lh, cy = src ? 556 : C / 2, y0 = cy - (fit.lines.length * step) / 2 + step / 2;
+      g.font = fontAt(Math.round(fit.fs));
+      g.fillStyle = textColor || '#101B33';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      fit.lines.forEach((ln, i) => g.fillText(ln, C / 2, y0 + i * step));
+    }
   }
 
   return c.toDataURL('image/png');
@@ -144,8 +155,12 @@ const cutsHTML = cur => Object.entries(CUTS).map(([k, c]) =>
 const sizePillsHTML = cur => SIZES.map(s =>
   `<button type="button" class="size-pill" data-size="${s}" aria-pressed="${s === cur}">${s}</button>`).join('');
 
-const fontsHTML = cur => FONTS.map(f =>
-  `<button type="button" class="font-opt" data-font="${f.id}" aria-pressed="${f.id === cur}" style="font-family:${f.family};font-weight:${f.weight};font-style:${f.style}">${f.name}</button>`).join('');
+/* Cada opción muestra el texto del cliente (o "Tu texto") con esa tipografía, y debajo su nombre */
+const fontsHTML = (cur, sample) => {
+  const s = escapeXML((sample || '').trim() || 'Tu texto');
+  return FONTS.map(f =>
+    `<button type="button" class="font-opt" data-font="${f.id}" aria-pressed="${f.id === cur}" aria-label="${f.name}"><span class="font-sample" style="font-family:${f.family};font-weight:${f.weight};font-style:${f.style}">${s}</span><small>${f.name}</small></button>`).join('');
+};
 
 const textColorsHTML = cur => TEXT_COLORS.map(c =>
   `<button type="button" class="swatch swatch-sm" data-textcolor="${c.hex}" style="--c:${c.hex}" aria-label="Texto ${c.name}" aria-pressed="${c.hex.toLowerCase() === (cur || '').toLowerCase()}"></button>`).join('');

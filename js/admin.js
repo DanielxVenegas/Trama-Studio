@@ -167,14 +167,17 @@ async function openOrderDialog(folio) {
 
     $('order-status-select').addEventListener('change', async e => {
       const select = e.target, next = select.value, msg = $('order-status-msg'), previous = order.status;
+      if (next === 'cancelado' && !window.confirm(`¿Cancelar el pedido ${folio}? Se repondrá el stock, se reembolsará el pago en Stripe (si el pedido se pagó con tarjeta) y esta acción no se puede deshacer.`)) {
+        select.value = previous; return;
+      }
       select.disabled = true;
       msg.className = 'status'; msg.textContent = 'Guardando...';
       try {
-        await api('/api/admin/orders/' + encodeURIComponent(folio), { method: 'PATCH', body: JSON.stringify({ status: next }) });
+        const result = await api('/api/admin/orders/' + encodeURIComponent(folio), { method: 'PATCH', body: JSON.stringify({ status: next }) });
         order.status = next;
-        msg.textContent = 'Estado actualizado.';
+        msg.textContent = result.refunded ? 'Pedido cancelado y pago reembolsado en Stripe.' : 'Estado actualizado.';
         select.disabled = next === 'cancelado';
-        toast(`Pedido ${folio}: ${STATUS_LABELS[next]}.`);
+        toast(result.refunded ? `Pedido ${folio}: cancelado y pago reembolsado.` : `Pedido ${folio}: ${STATUS_LABELS[next]}.`);
         loadOrders();
       } catch (err) {
         msg.className = 'status err'; msg.textContent = err.message;

@@ -41,6 +41,13 @@ db.exec(`
     text TEXT, font_id TEXT, text_color TEXT, preset_key TEXT, notes TEXT, thumb TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS checkout_sessions (
+    session_id TEXT PRIMARY KEY,
+    payload TEXT NOT NULL,
+    folio TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status, created_at);
 `);
 
