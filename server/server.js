@@ -11,7 +11,8 @@ try { /* lee .env sin librerías */
 
 const PORT = process.env.PORT || 3000;
 
-const { createOrder, OrderError } = require('./orders');
+const { OrderError } = require('./orders');
+const payments = require('./payments');
 const admin = require('./admin');
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.json': 'application/json' };
@@ -27,6 +28,7 @@ function limiter(max, windowMs) {
   };
 }
 const orderLimited = limiter(10, 36e5);
+const completionLimited = limiter(30, 36e5);
 
 const readBody = (req, max) => new Promise((ok, fail) => {
   let n = 0; const c = [];
@@ -55,21 +57,46 @@ http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const ip = req.socket.remoteAddress;
   try {
-    if (url.pathname === '/api/config') return json(res, 200, { orders: true });
+    if (url.pathname === '/api/config') return json(res, 200, { payments: payments.configured() });
+
+    if (url.pathname === '/api/stripe/webhook' && req.method === 'POST') {
+      let raw;
+      try { raw = (await readBody(req, 1e6)).toString(); }
+      catch (e) { return json(res, 400, { error: 'No se pudo leer el webhook.' }); }
+      try { return json(res, 200, payments.handleWebhook(raw, req.headers['stripe-signature'])); }
+      catch (e) {
+        if (e instanceof payments.PaymentError || e instanceof OrderError) return json(res, e.status, { error: e.message });
+        throw e;
+      }
+    }
+
+    if (url.pathname === '/api/checkout/sessions' && req.method === 'POST') {
+      if (orderLimited(ip)) return json(res, 429, { error: 'Demasiados intentos de pago. Prueba más tarde.' });
+      if (!isJSON(req)) return json(res, 400, { error: 'Formato de petición inválido.' });
+      let body;
+      try { body = await readJSON(req, ORDER_BODY_MAX); } catch (e) { return json(res, 400, { error: 'No se pudo leer el pedido.' }); }
+      try { return json(res, 201, await payments.createCheckoutSession(body)); }
+      catch (e) {
+        if (e instanceof payments.PaymentError || e instanceof OrderError) return json(res, e.status, { error: e.message });
+        throw e;
+      }
+    }
+
+    if (url.pathname === '/api/checkout/complete' && req.method === 'POST') {
+      if (completionLimited(ip)) return json(res, 429, { error: 'Demasiados intentos de verificación. Prueba más tarde.' });
+      if (!isJSON(req)) return json(res, 400, { error: 'Formato de petición inválido.' });
+      let body;
+      try { body = await readJSON(req, 2e3); } catch (e) { return json(res, 400, { error: 'No se pudo leer la petición.' }); }
+      try { return json(res, 200, await payments.completeCheckout(body.sessionId)); }
+      catch (e) {
+        if (e instanceof payments.PaymentError || e instanceof OrderError) return json(res, e.status, { error: e.message });
+        throw e;
+      }
+    }
 
     if (url.pathname === '/api/stock' && req.method === 'GET') {
       const map = {}; admin.listStock().forEach(p => { map[p.id] = p.qty; });
       return json(res, 200, map);
-    }
-
-    if (url.pathname === '/api/orders' && req.method === 'POST') {
-      if (orderLimited(ip)) return json(res, 429, { error: 'Demasiados pedidos desde aquí. Prueba más tarde.' });
-      if (!isJSON(req)) return json(res, 400, { error: 'Formato de petición inválido.' });
-      let body;
-      try { body = await readJSON(req, ORDER_BODY_MAX); } catch (e) { return json(res, 400, { error: 'No se pudo leer el pedido.' }); }
-      try { return json(res, 201, createOrder(body)); }
-      catch (e) { if (!sendKnownError(res, e, OrderError)) throw e; }
-      return;
     }
 
     if (url.pathname === '/api/admin/login' && req.method === 'POST') {

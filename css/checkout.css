@@ -12,12 +12,7 @@ input[aria-invalid=true]{border-color:#B3122A}
 .form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
 .form-row-3{display:grid;grid-template-columns:1.2fr 1fr .8fr;gap:.9rem}
 
-.pay-methods{display:flex;flex-direction:column;gap:.7rem}
-.pay-opt{display:flex;gap:.8rem;align-items:flex-start;padding:.9rem;border:2px solid var(--ink);border-radius:var(--r);cursor:pointer;background:#fff}
-.pay-opt input{margin-top:.25rem;accent-color:var(--cobalt)}
-.pay-opt small{display:block;color:var(--muted);font-weight:400}
-.pay-opt.active{border-color:var(--cobalt);background:#E8ECFF}
-.card-fields{display:flex;flex-direction:column;gap:.8rem;margin-top:-.1rem}
+.stripe-payment-note{padding:1rem;border:2px solid var(--ink);border-radius:var(--r);background:#fff}
 
 .checkout-disclaimer{font-size:.82rem;color:var(--muted)}
 .btn-block{width:100%}
